@@ -1,0 +1,6 @@
+pandas
+pyscbwrapper
+requests
+psycopg2
+sqlalchemy==1.4.42
+google-cloud-pubsub
