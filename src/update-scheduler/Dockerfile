@@ -8,7 +8,8 @@ WORKDIR /app
 COPY . .
 
 # Install dependencies
+RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Run file
-CMD ["python", "scb-api-leaf-updater.py"]
+CMD ["python", "scb-update-scheduler.py"]

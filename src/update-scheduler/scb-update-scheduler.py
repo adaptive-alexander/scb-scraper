@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import sqlalchemy
 from google.cloud import pubsub_v1
-from datetime import datetime as dt
+from google.oauth2 import service_account
 
 
 def create_sqlalchemy_con(con_params: dict) -> sqlalchemy.engine.Engine:
@@ -29,12 +29,13 @@ def get_update_list() -> np.ndarray:
     # Postgres login dict
     # ONLY DEV, REMAKE TO .ENV/KUBERNETES SECRET FOR PRODUCTION
     param_dic = {
-        "host": "localhost",
-        "database": "postgres",
-        "user": "postgres",
+        "host": "postgres.default",  # svc.ns
+        "database": "scb",  # See postgres configmap
+        "user": "api-scb",
         "password": "glacial",
         "port": "5432",
     }
+
     con = create_sqlalchemy_con(param_dic)
 
     df = pd.read_sql(
@@ -51,8 +52,11 @@ def get_update_list() -> np.ndarray:
 
 def pub(message: str) -> None:
     """Publishes a message to a Pub/Sub topic."""
+    # Setup authentication
+    credentials = service_account.Credentials.from_service_account_file("./google/key.json")
+
     # Initialize a Publisher client.
-    client = pubsub_v1.PublisherClient()
+    client = pubsub_v1.PublisherClient(credentials=credentials)
     # Create identifier `projects/{project_id}/topics/{topic_id}`
     topic_path = client.topic_path("adaptive-alex-cloud", "scb-table-download")
 
@@ -68,7 +72,7 @@ def pub(message: str) -> None:
 
 def main():
     updates = get_update_list()
-    for updt in updates[5:6]:
+    for updt in updates:
         pub(updt)
 
 

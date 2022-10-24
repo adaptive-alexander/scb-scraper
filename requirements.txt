@@ -3,4 +3,4 @@ pyscbwrapper
 requests
 psycopg2
 sqlalchemy==1.4.42
-google-cloud-pubsub
+google-cloud-pubsub==2.13.0

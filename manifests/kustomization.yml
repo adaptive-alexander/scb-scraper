@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+# Control Plane
+#- gc-controller-manager.yml  DOES NOT CURRENTLY WORK
+# Postgres
+- postgres/configmap.yml
+- postgres/volume.yml
+- postgres/pvc.yml
+- postgres/deployment.yml
+- postgres/service.yml
+# SCB database
+- scb-api-leaf-updater/cronjob.yml
+- scb-update-scheduler/cronjob.yml

@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: scb-api-leaf-updater
+  labels:
+    app: scb
+spec:
+  schedule: "@weekly"
+  jobTemplate:
+      spec:
+        template:
+          spec:
+            containers:
+              - name: scb-api-leaf-updater
+                image: scb-api-leaf-updater:0.0.4
+                ports:
+                  - containerPort: 5555
+                    protocol: TCP
+            restartPolicy: Never

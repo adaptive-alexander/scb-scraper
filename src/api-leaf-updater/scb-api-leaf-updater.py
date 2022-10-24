@@ -107,9 +107,9 @@ def main():
     # Postgres login dict
     # ONLY DEV, REMAKE TO .ENV/KUBERNETES SECRET FOR PRODUCTION
     param_dic = {
-        "host": "localhost",
-        "database": "postgres",
-        "user": "postgres",
+        "host": "postgres.default",  # svc.ns
+        "database": "scb",  # See postgres configmap
+        "user": "api-scb",
         "password": "glacial",
         "port": "5432",
     }
@@ -123,14 +123,17 @@ def main():
     # Offload checking duplicates from database
     print("Checking for duplicates")
     node_df = filter_new_nodes(con, node_df)
-    node_df["next_update"] = np.full(node_df.shape[0],dt.utcnow())
-    node_df["last_update"] = np.full(node_df.shape[0],dt(1900,1,1))
+    node_df["next_update"] = np.full(node_df.shape[0], dt.utcnow())
+    node_df["last_update"] = np.full(node_df.shape[0], dt(1900, 1, 1))
+    node_df = node_df.drop_duplicates(subset=["fill_nav_path"])
 
     # Try uploading node_df
     try:
         print("Uploading new nodes")
         # Append dataframe to table if exists
         node_df.to_sql("scb_ref", con, if_exists="append", index=False)
+        print("Upload top 10 rows:")
+        print(node_df.head(10))
     except Exception as e:
         # Escalate error
         print(f"Failed due to: {e}")

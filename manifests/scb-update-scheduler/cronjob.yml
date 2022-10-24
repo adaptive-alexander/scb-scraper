@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: scb-update-scheduler
+  labels:
+    app: scb
+spec:
+  schedule: "0,30 * * * *"
+  jobTemplate:
+      spec:
+        template:
+          spec:
+            containers:
+              - name: scb-update-scheduler
+                image: scb-update-scheduler:0.0.2
+                ports:
+                  - containerPort: 5555
+                    protocol: TCP
+            restartPolicy: Never
