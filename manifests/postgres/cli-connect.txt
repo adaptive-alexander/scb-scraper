@@ -1,1 +1,0 @@
-kubectl exec -it postgres-655d75f54b-8klqd -- psql -h localhost -U api-scb --password -p 5432 scb

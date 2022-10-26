@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scb-table-updater
+  labels:
+    app: scb
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: scb
+  template:
+    metadata:
+      labels:
+        app: scb
+    spec:
+      containers:
+        - name: scb-table-updater
+          image: scb-table-updater:v0.0.15
+          ports:
+            - containerPort: 5555
+              protocol: TCP

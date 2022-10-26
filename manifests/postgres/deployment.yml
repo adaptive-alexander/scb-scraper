@@ -3,7 +3,7 @@ kind: Deployment # Create a deployment
 metadata:
   name: postgres # Set the name of the deployment
 spec:
-  replicas: 3 # Set 3 deployment replicas
+  replicas: 2 # Set 2 deployment replicas
   selector:
     matchLabels:
       app: postgres

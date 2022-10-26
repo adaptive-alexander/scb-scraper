@@ -7,6 +7,7 @@ import sqlalchemy
 from datetime import datetime as dt
 from time import sleep
 from google.cloud import pubsub_v1
+from google.oauth2 import service_account
 
 
 def get_table_variables(scb: pyscbwrapper.SCB) -> list[dict]:
@@ -81,7 +82,7 @@ def chunk_card_list(query: dict, card_list: list) -> list[list[str]]:
         n = 1
 
     # Chunk card_list to use for download iterations
-    chunks =  np.array_split(card_list, len(card_list) // n)
+    chunks = np.array_split(card_list, len(card_list) // n)
 
     print(f"{datapoints * len(chunks[0])} datapoints per query.")
 
@@ -121,7 +122,7 @@ def get_table(id_path: str) -> list[dict]:
         if (i % 10 == 0) and (i > 0):
             # At around 10 iterations SCB's rate limiter sets in. Therefore, sleep 15s after 10 iterations
             print("Primitive rate limiter active (every 10 chunks)")
-            sleep(5)
+            sleep(10)
         inp_c = {card_key: c}  # Put back card_key and v to single kwarg dict
         scb.set_query(**query, **inp_c)
         data.append(scb.get_data())
@@ -237,13 +238,23 @@ def upload_df(con, df: pd.DataFrame, table: str):
 
 
 def create_table(df: pd.DataFrame, keys: list[str], table_name: str, con: sqlalchemy.engine.Engine):
-    # Manipulate SQL string
-    schema = pd.io.sql.get_schema(df, table_name, con=con)
-    schema = schema[:14] + "IF NOT EXISTS " + schema[14:-3] + ','
-    schema = schema + f"PRIMARY KEY ({', '.join(keys)})" + "\n);"
+    try:
+        # Manipulate SQL string
+        schema = pd.io.sql.get_schema(df, table_name, con=con)
+        schema = schema[:14] + "IF NOT EXISTS " + schema[14:-3] + ','
+        schema = schema + f"PRIMARY KEY ({', '.join(keys)})" + "\n);"
 
-    # Execute table creation if not exists
-    con.execute(schema)
+        # Execute table creation if not exists
+        con.execute(schema)
+    except:
+        con.execute(f"DROP TYPE {table_name};")
+        # Manipulate SQL string
+        schema = pd.io.sql.get_schema(df, table_name, con=con)
+        schema = schema[:14] + "IF NOT EXISTS " + schema[14:-3] + ','
+        schema = schema + f"PRIMARY KEY ({', '.join(keys)})" + "\n);"
+
+        # Execute table creation if not exists
+        con.execute(schema)
 
 
 def table_etl(node: str):
@@ -256,8 +267,8 @@ def table_etl(node: str):
             break
         except Exception as e:
             print(f'Failed downloading {node} due to: {e}.')
-            sleep((i + 1) ** 2)
             if i < 2:
+                sleep((i + 2) ** 2)
                 print(f'Retrying ({i + 1}/2)')
             else:
                 print(f'Could not download {node}.')
@@ -271,9 +282,9 @@ def table_etl(node: str):
     # Postgres login dict
     # ONLY DEV, REMAKE TO .ENV/KUBERNETES SECRET FOR PRODUCTION
     param_dic = {
-        "host": "localhost",
-        "database": "postgres",
-        "user": "postgres",
+        "host": "postgres.default",  # svc.ns
+        "database": "scb",  # See postgres configmap
+        "user": "api-scb",
         "password": "glacial",
         "port": "5432",
     }
@@ -290,6 +301,7 @@ def table_etl(node: str):
     # Create table if not exist
     print("Create table if not exists")
     create_table(df, keys, table_name, con)
+    sleep(10)
 
     # Comparison table
     cdf = pd.read_sql(
@@ -304,7 +316,6 @@ def table_etl(node: str):
     df = df[indicator != "both"]
     df = df.drop_duplicates(subset=keys)
 
-
     # Upload table
     print("Uploading table data")
     upload_df(con, df, table_name)
@@ -316,33 +327,42 @@ def table_etl(node: str):
         f"next_update = localtimestamp + interval '30 day' "
         f"WHERE scb_ref.full_nav_path = '{node}';"
     )
+    print(f"ETL for {table_name} successful.")
     return "Success"
 
 
 def sub() -> None:
     """Receives messages from a Pub/Sub subscription."""
+    # Setup authentication
+    credentials = service_account.Credentials.from_service_account_file("./google/key.json")
+
     # Initialize a Subscriber client
-    subscriber_client = pubsub_v1.SubscriberClient()
+    subscriber_client = pubsub_v1.SubscriberClient(credentials=credentials)
+
+    # Flow Control
+    flow_control = pubsub_v1.types.FlowControl(max_messages=1)
+
     # Create identifier `projects/{project_id}/subscriptions/{subscription_id}`
     subscription_path = subscriber_client.subscription_path("adaptive-alex-cloud", "scb-table-download-sub")
 
-    def callback(message):
+    def callback(message: pubsub_v1.subscriber.message.Message) -> None:
         print(f'Processing {message.message_id}.')
         ret = table_etl(base64.b64decode(message.data).decode())
 
-        # Acknowledge the message. Unack'ed messages will be redelivered.
+        # Acknowledge the message. Unacknowledged messages will be redelivered.
         if ret is None:
             print(
-                "Error: Failed downloading table. Acknowledging process to retry at a later time without inserting last_update.")
+                "Error: Failed downloading table. Acknowledging process to retry at a later time without inserting "
+                "last_update.")
         message.ack()
         print(f"Acknowledged {message.message_id}.")
 
     streaming_pull_future = subscriber_client.subscribe(
-        subscription_path, callback=callback)
+        subscription_path, callback=callback, flow_control=flow_control)
     print(f"Listening for messages on {subscription_path}...\n")
 
     try:
-        streaming_pull_future.result(timeout=None)
+        streaming_pull_future.result()
     except Exception as e:
         print(f"Shutting down due to: {e}")
         streaming_pull_future.cancel()  # Trigger the shutdown.

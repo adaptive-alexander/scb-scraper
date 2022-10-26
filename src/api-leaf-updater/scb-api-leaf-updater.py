@@ -65,14 +65,15 @@ def find_nodes(id_path: str, scb: pyscbwrapper.SCB, res_list: list[dict]):
 
 
 def try_create_table(con: sqlalchemy.engine.Engine):
-    con.execute(
+    query = (
         f"CREATE TABLE IF NOT EXISTS scb_ref ( "
         f"full_nav_path varchar(50) PRIMARY KEY, "
         f"description text not null , "
         f"last_update timestamp null, "
         f"next_update timestamp null"
-        f");"
-    )
+        f");")
+    print(f'Executing query: {query}')
+    con.execute(query)
 
 
 def filter_new_nodes(con: sqlalchemy.engine.Engine, node_df: pd.DataFrame) -> pd.DataFrame:
@@ -82,9 +83,11 @@ def filter_new_nodes(con: sqlalchemy.engine.Engine, node_df: pd.DataFrame) -> pd
         con
     )
 
-    # Check which values are not yet in database
-    indicator = node_df.merge(current_nodes, on=["full_nav_path"], how="left", indicator=True)['_merge']
-    return node_df[indicator != "both"]
+    if current_nodes.shape[0] != 0:
+        # Check which values are not yet in database
+        indicator = node_df.merge(current_nodes, on=["full_nav_path"], how="left", indicator=True)['_merge']
+        return node_df[indicator != "both"]
+    return node_df
 
 
 def main():
@@ -120,12 +123,14 @@ def main():
     # Create table if not exists
     try_create_table(con)
 
+    sleep(10)
+
     # Offload checking duplicates from database
     print("Checking for duplicates")
     node_df = filter_new_nodes(con, node_df)
     node_df["next_update"] = np.full(node_df.shape[0], dt.utcnow())
     node_df["last_update"] = np.full(node_df.shape[0], dt(1900, 1, 1))
-    node_df = node_df.drop_duplicates(subset=["fill_nav_path"])
+    node_df = node_df.drop_duplicates(subset=["full_nav_path"])
 
     # Try uploading node_df
     try:

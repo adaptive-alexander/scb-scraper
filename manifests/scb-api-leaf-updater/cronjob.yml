@@ -5,14 +5,14 @@ metadata:
   labels:
     app: scb
 spec:
-  schedule: "@weekly"
+  schedule: "0 0 * * 0"
   jobTemplate:
       spec:
         template:
           spec:
             containers:
               - name: scb-api-leaf-updater
-                image: scb-api-leaf-updater:0.0.4
+                image: scb-api-leaf-updater:v0.0.7
                 ports:
                   - containerPort: 5555
                     protocol: TCP

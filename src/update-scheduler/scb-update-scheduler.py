@@ -43,7 +43,7 @@ def get_update_list() -> np.ndarray:
         f"FROM scb_ref "
         f"WHERE scb_ref.next_update < NOW() "
         f"AND scb_ref.next_update > scb_ref.last_update "
-        f"LIMIT 100;",
+        f"LIMIT 25;",
         con
     )
 

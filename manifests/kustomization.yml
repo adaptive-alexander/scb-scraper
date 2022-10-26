@@ -12,3 +12,4 @@ resources:
 # SCB database
 - scb-api-leaf-updater/cronjob.yml
 - scb-update-scheduler/cronjob.yml
+- scb-table-updater/deployment.yml

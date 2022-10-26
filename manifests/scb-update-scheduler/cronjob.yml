@@ -5,14 +5,14 @@ metadata:
   labels:
     app: scb
 spec:
-  schedule: "0,30 * * * *"
+  schedule: "0,15,30,45 * * * *"
   jobTemplate:
       spec:
         template:
           spec:
             containers:
               - name: scb-update-scheduler
-                image: scb-update-scheduler:0.0.2
+                image: scb-update-scheduler:v0.0.4
                 ports:
                   - containerPort: 5555
                     protocol: TCP
