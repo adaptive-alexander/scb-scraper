@@ -234,6 +234,8 @@ def upload_df(con, df: pd.DataFrame, table: str):
     """
 
     # Upload dataframe using pandas df.to_sql()
+    print("Top 10 rows being uploaded:")
+    print(df.head(10))
     df.to_sql(table, con, if_exists='append', index=False)
 
 
@@ -321,11 +323,13 @@ def table_etl(node: str):
     upload_df(con, df, table_name)
 
     # Upsert metadata (last_updated)
+    print("Updating metadata")
     con.execute(
         f"UPDATE scb_ref "
         f"SET last_update = localtimestamp, "
-        f"next_update = localtimestamp + interval '30 day' "
-        f"WHERE scb_ref.full_nav_path = '{node}';"
+        f"next_update = localtimestamp + interval '30 day',"
+        f"full_nav_path = '{node}' "
+        f"WHERE full_nav_path = '{node}';"
     )
     print(f"ETL for {table_name} successful.")
     return "Success"

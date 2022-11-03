@@ -5,7 +5,7 @@ metadata:
   labels:
     app: postgres # Defines app to create PVC for
 spec:
-  storageClassName: manual
+  storageClassName: postgressc
   accessModes:
     - ReadWriteMany
   resources:

@@ -5,6 +5,7 @@ resources:
 #- gc-controller-manager.yml  DOES NOT CURRENTLY WORK
 # Postgres
 - postgres/configmap.yml
+- postgres/storageclass.yml
 - postgres/volume.yml
 - postgres/pvc.yml
 - postgres/deployment.yml

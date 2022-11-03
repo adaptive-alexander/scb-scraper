@@ -1,2 +1,3 @@
-kubectl exec -it postgres-655d75f54b-bgqcm -- psql -h localhost -U api-scb --password -p 5432 scb
+kubectl exec -it postgres-655d75f54b-d57gv -- psql -h localhost -U api-scb --password -p 5432 scb
 kubectl delete pods --field-selector status.phase=Failed -n default
+kubectl patch pv postgres-volume -p "{\"spec\":{\"persistentVolumeReclaimPolicy\":\"Delete\"}}"

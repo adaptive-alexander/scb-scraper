@@ -136,7 +136,7 @@ def main():
     try:
         print("Uploading new nodes")
         # Append dataframe to table if exists
-        node_df.to_sql("scb_ref", con, if_exists="append", index=False)
+        node_df.to_sql("scb_ref", con, if_exists="append", index=False, chunksize=5000)
         print("Upload top 10 rows:")
         print(node_df.head(10))
     except Exception as e:
